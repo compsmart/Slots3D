@@ -1,4 +1,4 @@
-import { useMemo, Suspense } from 'react';
+import { useMemo, Suspense, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
@@ -8,8 +8,21 @@ import { createSymbolTexture } from '../utils/textureGenerator';
 import logoUrl from '../assets/logo.avif';
 
 const SlotMachineScene = () => {
-  const { symbols, reelCount, symbolsPerReel } = useGameStore();
+  const { symbols, reelCount, symbolsPerReel, isBonusActive, status } = useGameStore();
   const logoTexture = useTexture(logoUrl);
+  
+  const [flash, setFlash] = useState(false);
+  
+  useEffect(() => {
+      if (status === 'win') {
+          const interval = setInterval(() => {
+              setFlash(prev => !prev);
+          }, 250);
+          return () => clearInterval(interval);
+      } else {
+          setFlash(false);
+      }
+  }, [status, isBonusActive]);
 
   // Generate textures once
   const textures = useMemo(() => {
@@ -26,13 +39,15 @@ const SlotMachineScene = () => {
   const startX = -totalWidth / 2;
   
   // Calculate Radius dynamically
-  const DESIRED_PANEL_HEIGHT = 1;
-  const radius = DESIRED_PANEL_HEIGHT / (2 * Math.tan(Math.PI / symbolsPerReel));
+  const DESIRED_PANEL_HEIGHT = 1.2;
+  const radius = DESIRED_PANEL_HEIGHT / (1.7 * Math.tan(Math.PI / symbolsPerReel));
   const diameter = radius * 2;
   
   // Payline Dimensions
   const paylineWidth = (reelCount * reelSpacing); // Slightly wider than just center-to-center
   const totalReelWidth = reelCount * reelSpacing;
+
+  const anglePerSymbol = (Math.PI * 2) / symbolsPerReel;
 
   return (
     <>
@@ -46,7 +61,7 @@ const SlotMachineScene = () => {
       <group position={[0, 0, 0]}>
         {/* Frame/Cabinet placeholder (Back Wall) */}
         <mesh position={[0, 0, -1]} receiveShadow>
-            <boxGeometry args={[totalReelWidth + 2, diameter + 2, 1]} />
+            <boxGeometry args={[totalReelWidth + 2, diameter + 0.5, 1]} />
             <meshStandardMaterial color="#333" />
         </mesh>
 
@@ -68,10 +83,36 @@ const SlotMachineScene = () => {
         
         {/* Payline Indicator (Center Line) */}
         {/* Positioned just in front of the reels (radius + offset) so it appears 'over' them */}
-        <mesh position={[0, 0, radius + 0.1]}>
-            <boxGeometry args={[paylineWidth, 0.05, 0.05]} />
-            <meshBasicMaterial color="red" />
-        </mesh>
+        {!isBonusActive && (
+          <mesh position={[0, 0, radius + 0.1]}>
+              <boxGeometry args={[paylineWidth, 0.05, 0.05]} />
+              <meshBasicMaterial color={status === 'win' && flash ? "#00ff00" : "red"} />
+          </mesh>
+        )}
+
+        {/* Bonus Lines (Full Cage of Lines) */}
+        {isBonusActive && Array.from({ length: symbolsPerReel }).map((_, i) => {
+            const angle = i * anglePerSymbol;
+            // Calculate position on circumference
+            // The line should be parallel to the reel panels
+            const y = Math.sin(angle) * (radius + 0.1);
+            const z = Math.cos(angle) * (radius + 0.1);
+            
+            // If bonus is active, all lines are winners, so flash them all
+            // Base color blue, flash green
+            const color = status === 'win' && flash ? "#00ff00" : "#0088ff"; // Blue
+
+            return (
+                <mesh 
+                    key={i} 
+                    position={[0, y, z]} 
+                    rotation={[-angle, 0, 0]}
+                >
+                    <boxGeometry args={[paylineWidth, 0.05, 0.05]} />
+                    <meshBasicMaterial color={color} />
+                </mesh>
+            );
+        })}
       </group>
       
       <OrbitControls 
