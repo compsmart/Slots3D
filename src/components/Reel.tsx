@@ -62,7 +62,7 @@ export const Reel = ({ index, textures, position }: ReelProps) => {
     currentRotation: 0,
     startTime: 0,
     stopDelay: index * 0.5, // Sequential stopping
-    spinDuration: 3 + index * 0.5, // Minimum spin time
+    spinDuration: 3 + index * 0.1, // 3 seconds base + small stagger
     startRotation: 0,
     startRotationCaptured: false
   });

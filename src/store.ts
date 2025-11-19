@@ -1,6 +1,18 @@
 import { create } from 'zustand';
 import symbolMapData from './symbolMap.json';
 
+import spinSound from './assets/sounds/spin.mp3';
+import winSound from './assets/sounds/win.mp3';
+import bigWinSound from './assets/sounds/big-win.mp3';
+import buttonSound from './assets/sounds/button-click.mp3';
+
+const audio = {
+  spin: new Audio(spinSound),
+  win: new Audio(winSound),
+  bigWin: new Audio(bigWinSound),
+  click: new Audio(buttonSound)
+};
+
 export type SymbolConfig = {
   id: string;
   name: string;
@@ -17,7 +29,8 @@ interface GameState {
   status: GameStatus;
   reels: number[]; // Current rotation/index of each reel
   winAmount: number;
-  isBonusActive: boolean;
+  isBonusActive: boolean; // True when bonus is triggered (for next spin)
+  isBonusSpin: boolean; // True when currently IN a bonus spin
   winningRows: number[]; // New: Store which rows matched for UI flashing
   
   // Config
@@ -53,7 +66,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   reels: [0, 0, 0, 0, 0],
   targetPositions: [0, 0, 0, 0, 0],
   winAmount: 0,
-  isBonusActive: false, // New state
+  isBonusActive: false, // Bonus triggered for next spin
+  isBonusSpin: false, // Currently in bonus spin
   winningRows: [],
   
   symbols: DEFAULT_SYMBOLS,
@@ -61,9 +75,16 @@ export const useGameStore = create<GameState>((set, get) => ({
   symbolsPerReel: 50, // Total segments
   reelStrips: symbolMapData.reels, // Load from JSON
 
-  setBet: (amount) => set({ bet: Math.max(1, amount) }),
+  setBet: (amount) => {
+    audio.click.currentTime = 0;
+    audio.click.play().catch(() => {});
+    set({ bet: Math.max(1, amount) });
+  },
   
   spin: () => {
+    audio.click.currentTime = 0;
+    audio.click.play().catch(() => {});
+    
     const { balance, bet, status, symbolsPerReel, reelCount } = get();
     if (status !== 'idle' && status !== 'win' && status !== 'lose') return;
     if (balance < bet) {
@@ -71,20 +92,33 @@ export const useGameStore = create<GameState>((set, get) => ({
       return;
     }
     
+    // Play Spin Sound
+    audio.spin.currentTime = 0;
+    audio.spin.loop = true;
+    audio.spin.play().catch(() => {});
+    
     // Determine results immediately
     const newTargets = Array.from({ length: reelCount }, () => 
       Math.floor(Math.random() * symbolsPerReel)
     );
 
+    const { isBonusActive } = get();
+    
     set({ 
       balance: balance - bet, 
       status: 'spinning', 
       winAmount: 0,
-      targetPositions: newTargets
+      targetPositions: newTargets,
+      isBonusSpin: isBonusActive, // Set to true if bonus was triggered, false otherwise
+      isBonusActive: false // Clear the flag (we're using it now)
     });
   },
 
   completeSpin: () => {
+    // Stop Spin Sound
+    audio.spin.pause();
+    audio.spin.currentTime = 0;
+
     const { targetPositions, symbols, reelStrips, bet, isBonusActive, symbolsPerReel } = get();
     
     // Get the symbol ID at the target position for each reel
@@ -171,6 +205,15 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     if (win > 0) {
         console.log(`WIN DETECTED: ${win}`);
+        // Play Win Sound based on amount (threshold for Big Win)
+        const isBigWin = win >= bet * 10;
+        if (isBigWin) {
+            audio.bigWin.currentTime = 0;
+            audio.bigWin.play().catch(() => {});
+        } else {
+            audio.win.currentTime = 0;
+            audio.win.play().catch(() => {});
+        }
     } else {
         console.log("No Win.");
     }
@@ -180,9 +223,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       winAmount: win,
       balance: state.balance + win,
       reels: targetPositions,
-      isBonusActive: triggeredBonus ? true : false,
+      isBonusActive: triggeredBonus ? true : false, // Set for NEXT spin if triggered
+      isBonusSpin: state.isBonusSpin, // Keep bonus spin flag during win state
       winningRows: currentWinningRows
     }));
+    
+    // Keep isBonusSpin true during win state so lines stay visible
+    // It will be cleared when a new spin starts (if not a bonus spin)
   }
 }));
 

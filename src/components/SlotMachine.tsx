@@ -8,7 +8,7 @@ import { createSymbolTexture } from '../utils/textureGenerator';
 import logoUrl from '../assets/logo.avif';
 
 const SlotMachineScene = () => {
-  const { symbols, reelCount, symbolsPerReel, isBonusActive, status, winningRows } = useGameStore();
+  const { symbols, reelCount, symbolsPerReel, isBonusActive, isBonusSpin, status, winningRows } = useGameStore();
   const logoTexture = useTexture(logoUrl);
   
   const [flash, setFlash] = useState(false);
@@ -105,7 +105,8 @@ const SlotMachineScene = () => {
         </mesh>
 
         {/* Bonus Lines (Full Cage of Lines) */}
-        {isBonusActive && Array.from({ length: symbolsPerReel }).map((_, i) => {
+        {/* Show during bonus spin OR when bonus is active for next spin */}
+        {(isBonusSpin || isBonusActive) && Array.from({ length: symbolsPerReel }).map((_, i) => {
             const angle = i * anglePerSymbol;
             
             // Skip drawing the bonus line exactly at angle 0 if we want to keep the red one distinctive
