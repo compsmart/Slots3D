@@ -79,7 +79,7 @@ export const UI = () => {
         </button>
       </div>
       
-      {status === 'win' && (
+      {status === 'win' && winAmount > 0 && (
           <div style={{
               position: 'absolute',
               top: '-200px',

@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store';
@@ -17,8 +17,41 @@ export const Reel = ({ index, textures, position }: ReelProps) => {
     reelStrips,
     status, 
     targetPositions, 
-    completeSpin 
+    completeSpin,
+    winningRows
   } = useGameStore();
+
+  // Flash state for winning symbols
+  const [flash, setFlash] = useState(false);
+  
+  useEffect(() => {
+    if (status === 'win') {
+        const interval = setInterval(() => {
+            setFlash(prev => !prev);
+        }, 250);
+        return () => clearInterval(interval);
+    } else {
+        setFlash(false);
+    }
+  }, [status]);
+
+  // Helper to check if a specific panel is part of a winning line
+  const isWinningPanel = (panelIndex: number, targetPos: number) => {
+      // Check if this panel is part of any winning row
+      // winningRows contains offsets from the center (targetPos)
+      
+      if (status !== 'win') return false;
+      
+      // In Bonus mode (or regular), winningRows has the offsets (0 to symbolsPerReel-1) that won.
+      // For a panel at 'panelIndex' to be part of 'offset' row win:
+      // (targetPos + offset) % symbolsPerReel === panelIndex
+      
+      // We need to check if ANY offset in winningRows makes this true.
+      return winningRows.some(offset => {
+          const winningIndex = (targetPos + offset) % symbolsPerReel;
+          return winningIndex === panelIndex;
+      });
+  };
 
   // Animation state
   const animationState = useRef({
@@ -201,6 +234,8 @@ export const Reel = ({ index, textures, position }: ReelProps) => {
                  map={textures[panel.symbol.id]} 
                  transparent 
                  alphaTest={0.5}
+                 emissive={status === 'win' && flash && isWinningPanel(panel.index, targetPositions[index]) ? "#ffffff" : "#000000"}
+                 emissiveIntensity={status === 'win' && flash && isWinningPanel(panel.index, targetPositions[index]) ? 0.5 : 0}
                />
             </mesh>
             {/* Debug Text (optional, sticking to graphic) */}

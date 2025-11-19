@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-const SYMBOLS = ['cherry', 'lemon', 'grape', 'bell', 'diamond', 'seven'];
+// Reduced symbol set for higher win frequency
+const SYMBOLS = ['cherry', 'seven', 'diamond']; 
 const REEL_COUNT = 5;
 const SYMBOLS_PER_REEL = 50;
 const BONUS_PER_REEL = 5;

@@ -18,6 +18,7 @@ interface GameState {
   reels: number[]; // Current rotation/index of each reel
   winAmount: number;
   isBonusActive: boolean;
+  winningRows: number[]; // New: Store which rows matched for UI flashing
   
   // Config
   symbols: SymbolConfig[];
@@ -36,12 +37,13 @@ interface GameState {
 // Default Symbols
 const DEFAULT_SYMBOLS: SymbolConfig[] = [
   { id: 'cherry', name: 'Cherry', texture: '🍒', multiplier: 2, color: '#ff0000' },
-  { id: 'lemon', name: 'Lemon', texture: '🍋', multiplier: 3, color: '#ffff00' },
-  { id: 'grape', name: 'Grape', texture: '🍇', multiplier: 5, color: '#800080' },
-  { id: 'bell', name: 'Bell', texture: '🔔', multiplier: 10, color: '#ffd700' },
   { id: 'diamond', name: 'Diamond', texture: '💎', multiplier: 20, color: '#00ffff' },
   { id: 'seven', name: 'Seven', texture: '7️⃣', multiplier: 50, color: '#ff00ff' },
   { id: 'bonus', name: 'Bonus', texture: '⭐', multiplier: 0, color: '#ffaa00' },
+  // Kept for compatibility if old map used, but new map won't use them
+  { id: 'lemon', name: 'Lemon', texture: '🍋', multiplier: 3, color: '#ffff00' },
+  { id: 'grape', name: 'Grape', texture: '🍇', multiplier: 5, color: '#800080' },
+  { id: 'bell', name: 'Bell', texture: '🔔', multiplier: 10, color: '#ffd700' },
 ];
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -52,6 +54,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   targetPositions: [0, 0, 0, 0, 0],
   winAmount: 0,
   isBonusActive: false, // New state
+  winningRows: [],
   
   symbols: DEFAULT_SYMBOLS,
   reelCount: 5,
@@ -102,73 +105,45 @@ export const useGameStore = create<GameState>((set, get) => ({
     const bonusCount = resultSymbolIds.filter(id => id === 'bonus').length;
     const triggeredBonus = bonusCount >= 1; // Configure as needed
     
-    // Standard Line Win (Center)
-    // Check for matches (simple line check)
-    const firstId = resultSymbolIds[0];
-    let matchCount = 1;
-    for (let i = 1; i < resultSymbolIds.length; i++) {
-        if (resultSymbolIds[i] === firstId) matchCount++;
-        else break;
-    }
+    // Helper for standard left-to-right win logic
+    const calculateLineWin = (ids: string[]) => {
+        if (ids.length === 0) return 0;
+        const firstId = ids[0];
+        
+        let matchCount = 1;
+        for (let i = 1; i < ids.length; i++) {
+            if (ids[i] === firstId) matchCount++;
+            else break; // Stop at first mismatch
+        }
+        
+        if (matchCount >= 3 && firstId !== 'bonus') {
+             const sConf = symbols.find(s => s.id === firstId);
+             if (sConf) {
+                 return bet * sConf.multiplier * (matchCount - 2);
+             }
+        }
+        return 0;
+    };
 
-    let win = 0;
-    // Regular Win
-    if (matchCount >= 3 && firstId !== 'bonus') { // Don't pay regular line for bonus unless specified
-      const symbolConfig = symbols.find(s => s.id === firstId);
-      if (symbolConfig) {
-          win = bet * symbolConfig.multiplier * (matchCount - 2);
-      }
-    }
+    // Standard Line Win (Center)
+    let win = calculateLineWin(resultSymbolIds);
+    const currentWinningRows: number[] = [];
+    if (win > 0) currentWinningRows.push(0); // 0 offset = center row match
 
     // Bonus Feature Win Evaluation
     // "EVERY single line across the 5 reels is a winning payline"
-    // This sounds like "All-Ways" or just lots of lines. 
-    // Or does it mean horizontal rows? 
-    // "We should show all the paylines as green lines when active."
-    
-    // If bonus is active (triggered THIS spin), we calculate the "Bonus Win".
-    // Let's interpret "Every single line" as: We pay out for the center line (already done),
-    // PLUS we check Top and Bottom rows? Or just pay a huge multiplier?
-    
-    // Interpretation: The user wants a visual effect "Green lines" and a payout.
-    // Let's simulate a "Win All Ways" or "Full Reel Win".
-    // For MVP: If bonus is hit, we award a flat bonus prize OR
-    // we treat the current spin as having winning lines everywhere.
+    // This implies the CURRENT spin becomes a bonus spin, OR the next one does.
+    // Logic: If triggeredBonus, we set flag. If isBonusActive, we eval all lines.
     
     // Let's just award a big bonus amount for now and toggle the state so UI can show lines.
     if (triggeredBonus) {
         // Trigger bonus mode, but NO immediate payout
-        // The NEXT spin (or current spin re-evaluated?)
-        // Query says: "it enters the bonus round for spin where every single row is a valid payline."
-        // This implies the CURRENT spin becomes a bonus spin, OR the next one does.
-        // "if the play lands a bonus symbol ... it will activate a bonus feature."
-        
-        // Let's assume it activates the feature state, and the USER must spin again to get the "All Lines" benefit?
-        // OR, does the current result get evaluated with "All Lines"?
-        // "enters the bonus round for spin" -> singular. Maybe the NEXT spin.
-        
-        // Implementation:
-        // 1. Land Bonus -> Win 0 (unless regular line wins), set isBonusActive = true.
-        // 2. User spins again -> isBonusActive is true -> Eval ALL lines -> Reset isBonusActive.
-        
-        // Wait, if I land a bonus, I expect a "Free Spin" or just "Next Spin is Super".
-        // Let's make it: Trigger Bonus -> No Payout (Win 0) -> Set Flag.
-        // Next Spin -> Check Flag -> Use "All Lines" math -> Clear Flag.
     } else if (isBonusActive) {
        // This IS the bonus spin
-       // Evaluate all lines (50 lines)
-       // For MVP, let's just say every match on the center line is multiplied by 50 (rows).
-       // Or actually iterate all rows? We don't have the full reel strip visible in state easily without calc.
-       // Actually we DO have 'reelStrips'.
-       
-       // Simplified "All Rows" logic:
-       // Just take the center line win and multiply by 50? 
-       // No, that's cheating.
-       // But since the reels are random, the probability is equal for all rows.
-       // Let's just multiply the center line win by random factor or just 50 for visual impact?
-       // Real implementation: Iterate offsets 0..49.
-       
+       console.log("--- BONUS SPIN EVALUATION ---");
        let totalBonusWin = 0;
+       
+       // Iterate all rows
        for(let offset = 0; offset < symbolsPerReel; offset++) {
            // Calculate symbols at this offset
            const rowIds = targetPositions.map((pos, rI) => {
@@ -177,20 +152,27 @@ export const useGameStore = create<GameState>((set, get) => ({
                return strip[(pos + offset) % strip.length];
            });
            
-           // Check win for this row
-           const fId = rowIds[0];
-           let mCount = 1;
-           for (let k = 1; k < rowIds.length; k++) {
-               if (rowIds[k] === fId) mCount++;
-               else break;
-           }
+           // Check win for this row using standard left-to-right logic
+           const lineWin = calculateLineWin(rowIds);
            
-           if (mCount >= 3 && fId !== 'bonus') {
-               const sConf = symbols.find(s => s.id === fId);
-               if (sConf) totalBonusWin += bet * sConf.multiplier * (mCount - 2);
+           if (lineWin > 0) {
+               totalBonusWin += lineWin;
+               currentWinningRows.push(offset); // Add this offset to winning rows
+               const fId = rowIds[0];
+               // Re-calculate match count just for logging
+               let mCount = 1;
+               for (let k = 1; k < rowIds.length; k++) if (rowIds[k] === fId) mCount++; else break;
+               console.log(`Row ${offset}: ${mCount}x ${fId} - Win: ${lineWin}`);
            }
        }
+       console.log(`Total Bonus Win: ${totalBonusWin}`);
        win = totalBonusWin;
+    }
+
+    if (win > 0) {
+        console.log(`WIN DETECTED: ${win}`);
+    } else {
+        console.log("No Win.");
     }
 
     set((state) => ({ 
@@ -198,7 +180,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       winAmount: win,
       balance: state.balance + win,
       reels: targetPositions,
-      isBonusActive: triggeredBonus ? true : false // Activate if triggered, deactivate if we just used it (was active)
+      isBonusActive: triggeredBonus ? true : false,
+      winningRows: currentWinningRows
     }));
   }
 }));

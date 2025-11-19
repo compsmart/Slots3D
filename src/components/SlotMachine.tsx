@@ -83,16 +83,19 @@ const SlotMachineScene = () => {
         
         {/* Payline Indicator (Center Line) */}
         {/* Positioned just in front of the reels (radius + offset) so it appears 'over' them */}
-        {!isBonusActive && (
-          <mesh position={[0, 0, radius + 0.1]}>
-              <boxGeometry args={[paylineWidth, 0.05, 0.05]} />
-              <meshBasicMaterial color={status === 'win' && flash ? "#00ff00" : "red"} />
-          </mesh>
-        )}
+        <mesh position={[0, 0, radius + 0.1]}>
+            <boxGeometry args={[paylineWidth, 0.05, 0.05]} />
+            <meshBasicMaterial color={status === 'win' && flash ? "#00ff00" : "red"} />
+        </mesh>
 
         {/* Bonus Lines (Full Cage of Lines) */}
         {isBonusActive && Array.from({ length: symbolsPerReel }).map((_, i) => {
             const angle = i * anglePerSymbol;
+            
+            // Skip drawing the bonus line exactly at angle 0 if we want to keep the red one distinctive
+            // Or just draw it over/under. Angle 0 is index 0 usually.
+            if (i === 0) return null;
+
             // Calculate position on circumference
             // The line should be parallel to the reel panels
             const y = Math.sin(angle) * (radius + 0.1);
