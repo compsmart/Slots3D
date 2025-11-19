@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import symbolMapData from './symbolMap.json';
 
 export type SymbolConfig = {
   id: string;
@@ -21,6 +22,7 @@ interface GameState {
   symbols: SymbolConfig[];
   reelCount: number;
   symbolsPerReel: number;
+  reelStrips: string[][]; // Mapped symbol IDs for each reel
 
   targetPositions: number[]; // Target stop index for each reel
   
@@ -51,7 +53,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   symbols: DEFAULT_SYMBOLS,
   reelCount: 5,
   symbolsPerReel: 50, // Total segments
-  
+  reelStrips: symbolMapData.reels, // Load from JSON
+
   setBet: (amount) => set({ bet: Math.max(1, amount) }),
   
   spin: () => {
@@ -76,31 +79,29 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   completeSpin: () => {
-    const { targetPositions, symbols, bet } = get();
+    const { targetPositions, symbols, reelStrips, bet } = get();
     
-    // Simple Win Evaluation: Check if all reels have the same symbol type
-    // We need to map the target index (0-11) to the actual symbol type
-    // For now, let's assume the strip is just 0,1,2,3,4,5,0,1,2,3,4,5...
-    
-    const getSymbolIndex = (pos: number) => pos % symbols.length;
-    
-    const symbolIndices = targetPositions.map(getSymbolIndex);
-    
-    // Check for matches
-    // Logic: Count occurrences. If 3+ match, pay out.
-    // Or just check line match (all 5 match, or first 3 match)
-    
-    const first = symbolIndices[0];
+    // Get the symbol ID at the target position for each reel
+    const resultSymbolIds = targetPositions.map((pos, reelIndex) => {
+        // The 'pos' is the index on the strip (0-49)
+        const strip = reelStrips[reelIndex];
+        return strip[pos % strip.length];
+    });
+
+    // Check for matches (simple line check)
+    const firstId = resultSymbolIds[0];
     let matchCount = 1;
-    for (let i = 1; i < symbolIndices.length; i++) {
-      if (symbolIndices[i] === first) matchCount++;
-      else break; // Consecutive from left
+    for (let i = 1; i < resultSymbolIds.length; i++) {
+        if (resultSymbolIds[i] === firstId) matchCount++;
+        else break;
     }
 
     let win = 0;
     if (matchCount >= 3) {
-      const symbol = symbols[first];
-      win = bet * symbol.multiplier * (matchCount - 2); // Simple formula
+      const symbolConfig = symbols.find(s => s.id === firstId);
+      if (symbolConfig) {
+          win = bet * symbolConfig.multiplier * (matchCount - 2);
+      }
     }
 
     set((state) => ({ 

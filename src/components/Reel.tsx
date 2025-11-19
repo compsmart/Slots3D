@@ -14,6 +14,7 @@ export const Reel = ({ index, textures, position }: ReelProps) => {
   const { 
     symbols, 
     symbolsPerReel, 
+    reelStrips,
     status, 
     targetPositions, 
     completeSpin 
@@ -46,11 +47,12 @@ export const Reel = ({ index, textures, position }: ReelProps) => {
   // We place panels in a circle
   const panels = useMemo(() => {
     const items = [];
+    const strip = reelStrips[index]; // Get the symbol strip for this reel
+
     for (let i = 0; i < symbolsPerReel; i++) {
       // Determine which symbol is at this index
-      // For simplicity, repeating pattern of symbols
-      const symbolIndex = i % symbols.length;
-      const symbol = symbols[symbolIndex];
+      const symbolId = strip ? strip[i % strip.length] : symbols[0].id;
+      const symbol = symbols.find(s => s.id === symbolId) || symbols[0];
       
       const angle = i * anglePerSymbol;
       // Position on circumference
@@ -70,7 +72,7 @@ export const Reel = ({ index, textures, position }: ReelProps) => {
       });
     }
     return items;
-  }, [symbols, symbolsPerReel, radius, anglePerSymbol]);
+  }, [symbols, symbolsPerReel, radius, anglePerSymbol, reelStrips, index]);
 
   useFrame((state) => {
     if (!groupRef.current) return;
