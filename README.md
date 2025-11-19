@@ -4,6 +4,9 @@ A high-quality 3D slot machine game built with React, TypeScript, Three.js, and 
 
 ## Demo
 
+Try it here:
+[https://3d.compsmart.co.uk](https://3d.compsmart.co.uk/)
+
 Watch the game in action:
 
 [![Demo Video](demo.png)](https://github.com/user-attachments/assets/1a2e0b62-5725-4856-900e-8624959a8926)
