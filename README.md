@@ -2,6 +2,15 @@
 
 A high-quality 3D slot machine game built with React, TypeScript, Three.js, and React Three Fiber. Features realistic 3D reels with smooth animations, configurable symbols, and an immersive bonus round system.
 
+## Demo
+
+Watch the game in action:
+
+<video width="100%" controls>
+  <source src="demo.mp4" type="video/mp4">
+  Your browser does not support the video tag. [Download the video](demo.mp4) to view it.
+</video>
+
 ## Features
 
 - **5 Reel Slot Machine**: Classic 5-reel slot game with 50 symbols per reel
