@@ -6,7 +6,7 @@ A high-quality 3D slot machine game built with React, TypeScript, Three.js, and 
 
 Watch the game in action:
 
-[![Demo Video](demo.png)](https://github.com/compsmart/Slots3D/raw/refs/heads/master/demo.mp4)
+[![Demo Video](demo.png)](https://github.com/user-attachments/assets/1a2e0b62-5725-4856-900e-8624959a8926)
 
 <video width="100%" controls>
   <source src="demo.mp4" type="video/mp4">
