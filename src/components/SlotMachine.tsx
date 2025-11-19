@@ -8,7 +8,7 @@ import { createSymbolTexture } from '../utils/textureGenerator';
 import logoUrl from '../assets/logo.avif';
 
 const SlotMachineScene = () => {
-  const { symbols, reelCount, symbolsPerReel, isBonusActive, status } = useGameStore();
+  const { symbols, reelCount, symbolsPerReel, isBonusActive, status, winningRows } = useGameStore();
   const logoTexture = useTexture(logoUrl);
   
   const [flash, setFlash] = useState(false);
@@ -85,7 +85,23 @@ const SlotMachineScene = () => {
         {/* Positioned just in front of the reels (radius + offset) so it appears 'over' them */}
         <mesh position={[0, 0, radius + 0.1]}>
             <boxGeometry args={[paylineWidth, 0.05, 0.05]} />
-            <meshBasicMaterial color={status === 'win' && flash ? "#00ff00" : "red"} />
+            {/* 
+                Main line (Index 0):
+                - If regular spin: Red (base) / Green (flash if win)
+                - If bonus active: Red (base). Does it flash?
+                  The loop below handles all OTHER lines. 
+                  If index 0 is a winner in bonus mode, should it flash Green? 
+                  Current logic: color={status === 'win' && flash ? "#00ff00" : "red"}
+                  This flashes Green on ANY win (global status). 
+                  We want it to flash ONLY if it's a winning row (0).
+                  But status='win' is global. 
+                  Wait, 'winningRows' is precise.
+            */}
+            <meshBasicMaterial color={
+                status === 'win' && flash && winningRows.includes(0) 
+                ? "#00ff00" 
+                : "red"
+            } />
         </mesh>
 
         {/* Bonus Lines (Full Cage of Lines) */}
@@ -93,7 +109,6 @@ const SlotMachineScene = () => {
             const angle = i * anglePerSymbol;
             
             // Skip drawing the bonus line exactly at angle 0 if we want to keep the red one distinctive
-            // Or just draw it over/under. Angle 0 is index 0 usually.
             if (i === 0) return null;
 
             // Calculate position on circumference
@@ -101,9 +116,11 @@ const SlotMachineScene = () => {
             const y = Math.sin(angle) * (radius + 0.1);
             const z = Math.cos(angle) * (radius + 0.1);
             
-            // If bonus is active, all lines are winners, so flash them all
-            // Base color blue, flash green
-            const color = status === 'win' && flash ? "#00ff00" : "#0088ff"; // Blue
+            // Logic:
+            // - Base Color: Blue
+            // - Flash Color: Green (IF this row is in winningRows AND we are flashing)
+            const isWinner = winningRows.includes(i);
+            const color = status === 'win' && flash && isWinner ? "#00ff00" : "#0088ff";
 
             return (
                 <mesh 

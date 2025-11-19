@@ -8,9 +8,33 @@ export const UI = () => {
   };
 
   return (
-    <div style={{
-      position: 'absolute',
-      bottom: 0,
+    <>
+      {/* Rules Panel */}
+      <div style={{
+        position: 'absolute',
+        top: '20px',
+        left: '20px',
+        background: 'rgba(0, 0, 0, 0.8)',
+        padding: '20px',
+        borderRadius: '10px',
+        color: 'white',
+        fontFamily: 'sans-serif',
+        maxWidth: '300px',
+        border: '1px solid #444',
+        pointerEvents: 'none'
+      }}>
+        <h3 style={{ margin: '0 0 10px 0', color: '#ffd700', fontSize: '1.1rem' }}>BONUS RULES</h3>
+        <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: '1.5', color: '#ddd' }}>
+          Land a <strong>Star</strong> (⭐) on the <strong style={{ color: '#ff4444' }}>Red Payline</strong> to activate 
+          the <strong>Bonus Mode</strong>.
+          <br/><br/>
+          In Bonus Mode, all <strong>50 rows</strong> become active paylines for massive wins!
+        </p>
+      </div>
+
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
       left: 0,
       width: '100%',
       padding: '20px',
@@ -95,6 +119,7 @@ export const UI = () => {
           </div>
       )}
     </div>
+    </>
   );
 };
 
